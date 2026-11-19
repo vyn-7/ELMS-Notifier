@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">ELMS Notifier logo</title>
+  <desc id="desc">An open book with an amber notification badge.</desc>
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="#0B1220"/>
+  <path d="M120 170c42-22 98-22 136 2v190c-38-24-94-24-136-2V170z" fill="#F8FAFC"/>
+  <path d="M392 170c-42-22-98-22-136 2v190c38-24 94-24 136-2V170z" fill="#CBD5E1"/>
+  <path d="M256 172v190" stroke="#94A3B8" stroke-width="10" stroke-linecap="round"/>
+  <path d="M156 218c22-8 48-8 68 2M156 258c22-8 48-8 68 2M156 298c22-8 48-8 68 2" stroke="#94A3B8" stroke-width="10" stroke-linecap="round"/>
+  <path d="M288 220c20-10 46-10 68-2M288 260c20-10 46-10 68-2M288 300c20-10 46-10 68-2" stroke="#64748B" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="384" cy="136" r="52" fill="#F59E0B"/>
+  <path d="M384 108c-11 0-20 9-20 20v18l-9 12h58l-9-12v-18c0-11-9-20-20-20z" fill="#0B1220"/>
+  <circle cx="384" cy="166" r="6" fill="#0B1220"/>
+</svg>

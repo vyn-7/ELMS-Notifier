@@ -1,0 +1,25 @@
+# Local secrets and runtime state
+.env
+.env.*
+!.env.example
+.session/
+state.json
+state.corrupt-*.json
+downloads/
+recon/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Editor and OS noise
+.vscode/
+.idea/
+.DS_Store
+*.log
+*.tmp
