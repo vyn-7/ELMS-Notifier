@@ -30,7 +30,7 @@ jobs:
         run: pip install -r requirements-cloud.txt
 
       - name: Restore state
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: state.json
           key: elms-state-${{ github.run_id }}
@@ -45,7 +45,7 @@ jobs:
 
       - name: Save state
         if: always() && hashFiles('state.json') != ''
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: state.json
           key: elms-state-${{ github.run_id }}
