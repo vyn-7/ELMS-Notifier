@@ -2,10 +2,8 @@ name: ELMS assignment notifier
 
 on:
   schedule:
-    # 10:27, 18:27, and 22:27 Asia/Manila (UTC+8). GitHub cron is UTC.
-    # Avoid minute 0: scheduled runs at the top of the hour are the most
-    # likely to be delayed or skipped under load.
-    - cron: "27 2,10,14 * * *"
+    # Temporary probe: 10:38 Asia/Manila. Revert to 27 2,10,14 after this test.
+    - cron: "38 2 * * *"
   workflow_dispatch: {}
 
 permissions:
