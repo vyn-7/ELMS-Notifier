@@ -2,8 +2,8 @@ name: ELMS assignment notifier
 
 on:
   schedule:
-    # Temporary probe: 10:38 Asia/Manila. Revert to 27 2,10,14 after this test.
-    - cron: "38 2 * * *"
+    # 10:15, 13:15, and 22:15 Asia/Manila (UTC+8). GitHub cron is UTC.
+    - cron: "15 2,6,14 * * *"
   workflow_dispatch: {}
 
 permissions:
