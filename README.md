@@ -250,11 +250,11 @@ The workflow runs at:
 
 | Philippine Time (UTC+8) | UTC cron |
 |---|---|
-| **10:07 AM** | `02:07` |
-| **6:07 PM** | `10:07` |
-| **10:07 PM** | `14:07` |
+| **10:27 AM** | `02:27` |
+| **6:27 PM** | `10:27` |
+| **10:27 PM** | `14:27` |
 
-The cron expression is `7 2,10,14 * * *` in [`.github/workflows/elms-notifier.yml`](.github/workflows/elms-notifier.yml). The seven-minute offset avoids GitHub's busy top-of-hour scheduling window. GitHub scheduled runs can still be delayed under load; this is not a real-time monitor.
+The cron expression is `27 2,10,14 * * *` in [`.github/workflows/elms-notifier.yml`](.github/workflows/elms-notifier.yml). The 27-minute offset avoids GitHub's busy top-of-hour scheduling window. GitHub scheduled runs can still be delayed under load; this is not a real-time monitor.
 
 ## Configuration
 
