@@ -1,4 +1,4 @@
-"""Discord bot delivery: embeds, instruction chunks, PNG batches, alerts."""
+"""Discord bot delivery: concise embeds, PNG batches, alerts."""
 
 from __future__ import annotations
 
@@ -20,7 +20,6 @@ from .config import (
 from .models import Assignment
 from .pdf_tools import plan_batches
 
-EMBED_DESCRIPTION_LIMIT = 4096
 EMBED_FIELD_LIMIT = 1024
 EMBED_TITLE_LIMIT = 256
 MESSAGE_CONTENT_LIMIT = 2000
@@ -92,7 +91,7 @@ def _post_message(payload: dict[str, Any], files: dict[str, tuple[str, bytes, st
 
 
 def build_embed(assignment: Assignment) -> dict[str, Any]:
-    """Build the primary Discord embed for an assignment."""
+    """Build the concise Discord embed for an assignment."""
 
     label = {
         "dropbox": "assignment",
@@ -101,10 +100,6 @@ def build_embed(assignment: Assignment) -> dict[str, Any]:
         "quiz": "quiz",
     }.get(assignment.kind, "item")
     title = _truncate(f"📚 New {label}: {assignment.title}", EMBED_TITLE_LIMIT)
-    description = _truncate(
-        assignment.instructions_text or "No instructions provided.",
-        EMBED_DESCRIPTION_LIMIT,
-    )
     if assignment.deadline is not None:
         timestamp = int(assignment.deadline.timestamp())
         deadline = f"<t:{timestamp}:F> (<t:{timestamp}:R>)"
@@ -119,7 +114,6 @@ def build_embed(assignment: Assignment) -> dict[str, Any]:
     ]
     return {
         "title": title,
-        "description": description,
         "color": 0x2F80ED,
         "fields": fields,
         "footer": {"text": _truncate(f"ID: {assignment.id}", 2048)},
@@ -166,7 +160,6 @@ def send_assignment(
     item seen only after this function returns successfully.
     """
 
-    instructions = assignment.instructions_text.strip()
     _post_message(
         {
             "content": "@everyone",
@@ -174,16 +167,6 @@ def send_assignment(
             "allowed_mentions": {"parse": ["everyone"]},
         }
     )
-
-    if len(instructions) > EMBED_DESCRIPTION_LIMIT:
-        remainder = instructions[EMBED_DESCRIPTION_LIMIT:]
-        for chunk in chunk_text(remainder):
-            _post_message(
-                {
-                    "content": f"**{_truncate(assignment.title, 150)} — instructions (continued)**\n{chunk}",
-                    "allowed_mentions": {"parse": []},
-                }
-            )
 
     for group_name, files in png_groups or []:
         batches = plan_batches(files, max_files=MAX_ATTACHMENTS, max_bytes=MAX_MESSAGE_BYTES)

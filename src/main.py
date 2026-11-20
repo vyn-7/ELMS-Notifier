@@ -175,7 +175,7 @@ def run(dry_run: bool = False) -> int:
             return 0
 
     except auth.SessionExpired:
-        message = "Session expired, please re-login: python scripts/recon.py --login-only"
+        message = "ELMS session expired; please re-login."
         log.error("%s", message)
         if dry_run:
             print(message)

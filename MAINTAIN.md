@@ -122,7 +122,7 @@ Session cookies are credentials. Never print them, commit them, or attach them t
 - Auth header: `Authorization: Bot <token>`
 - The bot needs no gateway connection because it only sends messages. It can stay offline between runs.
 - The first message of an assignment contains `@everyone` and `allowed_mentions: {"parse": ["everyone"]}`.
-- Alerts, continuation chunks, and file batches set `allowed_mentions: {"parse": []}` so they never ping.
+- Alerts and file batches set `allowed_mentions: {"parse": []}` so they never ping.
 - The bot needs **View Channels**, **Send Messages**, **Embed Links**, **Attach Files**, and **Mention Everyone**.
 - HTTP 429 responses honor `retry_after` with a bounded sleep and at most four attempts.
 - Attachments are capped at **10 per message** and **8 MiB per file/message** to leave room for the embed payload.

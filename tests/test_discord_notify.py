@@ -35,6 +35,7 @@ def test_chunk_text_keeps_all_words() -> None:
 
 def test_build_embed_has_required_fields() -> None:
     embed = discord_notify.build_embed(make_assignment())
+    assert "description" not in embed
     assert embed["title"].startswith("📚 New assignment:")
     assert [field["name"] for field in embed["fields"]] == ["Course", "Deadline", "Link"]
     assert "<t:" in embed["fields"][1]["value"]

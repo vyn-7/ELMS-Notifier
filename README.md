@@ -13,7 +13,7 @@
 
 **A free, open-source Discord bot that watches STI eLMS for new assignments and posts them to your server.**
 
-ELMS Notifier reuses a Microsoft browser session that you sign into once, reads the STI eLMS to-do list, and sends each new assignment to Discord with its course, title, deadline, instructions, a direct link, PDF pages as PNGs, and the original PDF. It runs on a schedule in GitHub Actions — no paid APIs, no credit card, and no process running on your laptop all day.
+ELMS Notifier reuses a Microsoft browser session that you sign into once, reads the STI eLMS to-do list, and sends each new assignment to Discord with its course, title, deadline, a direct link, PDF pages as PNGs, and the original PDF. It runs on a schedule in GitHub Actions — no paid APIs, no credit card, and no process running on your laptop all day.
 
 > **Read-only by design.** It never submits, edits, deletes, enrolls, or clicks anything that changes data on the LMS. It only opens pages and downloads assignment attachments.
 
@@ -49,7 +49,7 @@ ELMS Notifier turns that to-do list into a quiet Discord feed:
 
 - **One message per new item**, not a wall of repeated updates.
 - **Deadlines become Discord timestamps**, so every member sees the deadline in their own local time.
-- **Instructions and PDFs arrive together**, including PNG previews for quick reading on a phone.
+- **PDFs arrive as PNG pages plus the original file**, ready for quick reading on a phone.
 - **Failures are visible.** An expired session or an unreadable page sends an alert instead of failing silently.
 
 It is built for a single student account on `elms.sti.edu`. It is not a multi-user service, a grade tracker, or an auto-submitter.
@@ -58,12 +58,11 @@ It is built for a single student account on `elms.sti.edu`. It is not a multi-us
 
 For every newly detected to-do item:
 
-- A Discord embed with the **course**, **title**, **deadline**, **instructions**, and an **Open in ELMS** link.
+- A Discord embed with the **course**, **title**, **deadline**, and an **Open in ELMS** link.
 - A live Discord timestamp when the deadline can be parsed; the raw ELMS deadline text is shown underneath.
 - PDF attachments converted to **PNG pages**, batched to respect Discord's attachment limits.
 - The **original PDF** (or other attachment).
-- Continuation messages when the instructions are longer than one embed.
-- `@everyone` on the **first message of each new item** only. Alerts, continuation messages, and file batches do not ping.
+- `@everyone` on the **first message of each new item** only. Alerts and file batches do not ping.
 
 The first run is a **silent baseline**: it records the current to-do list without posting old items. Later runs post only items whose stable ELMS ID is not already in `state.json`.
 
@@ -86,7 +85,7 @@ flowchart LR
 1. **Read the to-do widget.** `/user_to_do_widget/tasks` returns the course list as server-rendered HTML. In CI this works with the saved ELMS cookies over plain HTTPS, so no browser is launched on the runner.
 2. **Fetch each course's due page** and parse assignment rows into stable IDs.
 3. **Diff against `state.json`.** Only IDs that have not been delivered are processed. The state is saved in the GitHub Actions cache between runs.
-4. **Fetch the detail page** for each new item and parse the course, title, deadline, instructions, and attachments.
+4. **Fetch the detail page** for each new item and parse the course, title, deadline, and attachments.
 5. **Convert PDFs to PNGs** with PyMuPDF. Pages are batched to stay within Discord's 10-attachment and 8 MiB message budget.
 6. **Send through the Discord bot API.** An item is marked seen only after its message is delivered successfully; failed items are retried on later runs.
 
