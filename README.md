@@ -158,7 +158,7 @@ python scripts/recon.py --login-only
 
 A visible Chromium window opens. Sign in with your STI Microsoft account (including MFA), wait until the ELMS dashboard appears, then press Enter in the terminal. The helper saves the reusable session to `.session/storage-state.json` (gitignored).
 
-The notifier never asks for or stores your password, and never automates the Microsoft sign-in. When the session expires, run the same command again.
+The notifier never asks for or stores your password, and never automates the Microsoft sign-in. When the session expires, use `python scripts/refresh_session.py` (see [Refresh an expired session](#4-refresh-an-expired-session)).
 
 For GitHub Actions, export only the ELMS cookies:
 
@@ -233,10 +233,12 @@ When the bot posts a session-expired alert:
 
 ```bash
 source .venv/bin/activate
-python scripts/recon.py --login-only
-python scripts/export_cookies.py
-gh secret set ELMS_COOKIES < .session/cookies.json
+python scripts/refresh_session.py
 ```
+
+This opens a dedicated browser profile. If the session is still valid, it exports immediately. If it expired, sign in manually (including Microsoft MFA). The script prints the signed-in account name, asks you to confirm it is the right account, then writes `.session/cookies.json` and updates the `ELMS_COOKIES` GitHub secret.
+
+Use `--no-secret` to skip the GitHub update or `--repo owner/name` to target a different repository. The helper never enters credentials or automates Microsoft sign-in.
 
 The next scheduled run uses the new cookies. No code changes are needed.
 
@@ -289,7 +291,7 @@ This project is not affiliated with STI Education Services Group or Discord Inc.
 | `Discord returned HTTP 403` | Missing channel permissions | Grant Send Messages, Embed Links, Attach Files |
 | `Discord returned HTTP 404` | Wrong channel ID or bot not in server | Copy the channel ID again; re-invite the bot |
 | Message posts but `@everyone` does not ping | Missing Mention Everyone | Grant that permission in the channel |
-| `Session expired` alert | Cookies expired or rejected | Run the login helper, export cookies, update `ELMS_COOKIES` |
+| `Session expired` alert | Cookies expired or rejected | Run `python scripts/refresh_session.py` and update `ELMS_COOKIES` |
 | Empty to-do list alert | Session or page layout changed | Run `--dry-run`; check the session and selectors |
 | No new notifications | Items are already in the baseline | Check `state.json`; this is expected for old items |
 | PDF too large | Page exceeds Discord's file limit | The bot lowers DPI 130 → 100 → 80 and batches pages |
@@ -305,7 +307,8 @@ This project is not affiliated with STI Education Services Group or Discord Inc.
 │   └── GITHUB_ACTIONS.md       # Deployment, limits, and troubleshooting
 ├── scripts/
 │   ├── export_cookies.py       # Export the minimal CI cookie jar
-│   └── recon.py                # Manual ELMS login + optional recon capture
+│   ├── recon.py                # Manual ELMS login + optional recon capture
+│   └── refresh_session.py      # One-command sign-in + secret refresh
 ├── src/
 │   ├── auth.py                 # Browser and cookie-backed sessions
 │   ├── config.py               # Environment, paths, limits

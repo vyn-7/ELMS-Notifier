@@ -22,4 +22,5 @@ DETAIL_META_ITEM = "aside.rightColumn div.grading_fixed_col div.block ul li"
 DETAIL_FILE_LINK = "div.materialStyle a[href]"
 
 LOGGED_IN_BODY_CLASS = "ctr_user_dashboard"
+LOGGED_IN_USERNAME = "a.username"
 SESSION_EXPIRED_URL_FRAGMENTS = ("/log_in", "not_logged_in")

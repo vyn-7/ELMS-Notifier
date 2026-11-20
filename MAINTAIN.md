@@ -108,8 +108,8 @@ Deadlines are parsed by `scraper.parse_deadline()`:
 
 ## Session lifecycle
 
-- Local runs use `.session/storage-state.json`, created by `scripts/recon.py --login-only`.
-- CI runs use `ELMS_COOKIES_JSON`, created by `scripts/export_cookies.py` and stored as the `ELMS_COOKIES` repository secret.
+- Local runs use `.session/storage-state.json`, created by `scripts/refresh_session.py` or `scripts/recon.py --login-only`.
+- CI runs use `ELMS_COOKIES_JSON`, created by `scripts/refresh_session.py` (or `scripts/export_cookies.py`) and stored as the `ELMS_COOKIES` repository secret.
 - `HttpSession.check_session()` fetches `/user_dashboard` and requires the `ctr_user_dashboard` body class. A login redirect or missing marker raises `SessionExpired`.
 - The notifier never automates Microsoft sign-in. If the session expires, it sends an alert and exits with code `2`.
 - Refresh procedure: run the login helper on a graphical machine, export cookies, update the secret, then run the workflow manually to confirm.

@@ -23,7 +23,7 @@ Do not include real cookies, bot tokens, student names, assignment content, or f
 |---|---|---|
 | `DISCORD_BOT_TOKEN` | Local `.env` or GitHub repository secret | Reset in the Discord Developer Portal; update `.env` and the secret |
 | `ELMS_COOKIES` / `ELMS_COOKIES_JSON` | GitHub repository secret; local `.session/cookies.json` | Sign out the ELMS session, sign in again, re-export, update the secret |
-| `.session/storage-state.json` | Local gitignored file | Re-run `scripts/recon.py --login-only` |
+| `.session/storage-state.json` | Local gitignored file | Re-run `scripts/refresh_session.py` |
 
 The bot token can post as the bot. The cookie jar can read the student's ELMS account. Treat both as passwords.
 

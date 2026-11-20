@@ -79,10 +79,10 @@ When the bot posts a session-expired alert:
 ```bash
 cd ~/Documents/Projects/STI/assignment-notifier
 source .venv/bin/activate
-python scripts/recon.py --login-only
-python scripts/export_cookies.py
-gh secret set ELMS_COOKIES < .session/cookies.json
+python scripts/refresh_session.py
 ```
+
+The helper opens a dedicated browser profile. If the session is still valid, it exports immediately; otherwise sign in manually. It prints the signed-in account name, asks for confirmation, then writes the cookie jar and updates `ELMS_COOKIES`. Use `--no-secret` to skip the GitHub update.
 
 The next scheduled run uses the new cookies. You do not need to change any code.
 
