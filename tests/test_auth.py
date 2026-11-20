@@ -99,6 +99,18 @@ def test_http_session_rejects_login_redirect() -> None:
         client.close()
 
 
+def test_http_session_rejects_redirect_loop() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(302, headers={"Location": str(request.url)})
+
+    client = HttpSession(_COOKIES, transport=httpx.MockTransport(handler))
+    try:
+        with pytest.raises(SessionExpired):
+            client.check_session()
+    finally:
+        client.close()
+
+
 def test_http_session_rejects_http_errors() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(500)

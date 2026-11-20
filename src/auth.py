@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from contextlib import contextmanager
 from typing import Iterator, Protocol
+from urllib.parse import urlsplit
 
 import httpx
 from bs4 import BeautifulSoup
@@ -98,10 +99,14 @@ class HttpSession:
         headers = {"Referer": referer} if referer else None
         try:
             response = self._client.get(url, headers=headers)
+        except httpx.TooManyRedirects as exc:
+            raise SessionExpired("ELMS login redirect loop; refresh the session") from exc
         except httpx.HTTPError as exc:
-            raise FetchError("ELMS request failed") from exc
+            raise FetchError(f"ELMS request failed ({type(exc).__name__})") from exc
         if response.status_code >= 400:
-            raise FetchError(f"ELMS returned HTTP {response.status_code}")
+            raise FetchError(
+                f"ELMS returned HTTP {response.status_code} for {urlsplit(str(response.url)).path}"
+            )
         if any(fragment in str(response.url) for fragment in selectors.SESSION_EXPIRED_URL_FRAGMENTS):
             raise SessionExpired("Login page appeared")
         return response

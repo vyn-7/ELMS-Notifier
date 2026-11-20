@@ -113,7 +113,7 @@ def run(dry_run: bool = False) -> int:
                     raise
                 except Exception as exc:
                     course_errors += 1
-                    log.error("Course %s failed: %s", course.course_id, type(exc).__name__)
+                    log.error("Course %s failed: %s: %s", course.course_id, type(exc).__name__, exc)
                 time.sleep(0.4)
 
             if course_errors and not dry_run:
@@ -182,7 +182,7 @@ def run(dry_run: bool = False) -> int:
             _alert(message)
         return 2
     except Exception as exc:
-        log.error("Run failed: %s", type(exc).__name__)
+        log.error("Run failed: %s: %s", type(exc).__name__, exc)
         if not dry_run:
             _alert(f"ELMS notifier failed: {type(exc).__name__}")
         return 1
