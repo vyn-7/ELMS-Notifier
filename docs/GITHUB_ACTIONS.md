@@ -6,7 +6,7 @@ It works because the bot does not need a browser in CI. `ELMS_COOKIES_JSON` give
 
 ## Schedule
 
-The workflow cron is `0 2,10,14 * * *` (UTC), which is **10:00, 18:00, and 22:00 Asia/Manila**. Edit `.github/workflows/elms-notifier.yml` if you want different hours.
+The workflow cron is `7 2,10,14 * * *` (UTC), which is **10:07, 18:07, and 22:07 Asia/Manila**. The seven-minute offset avoids GitHub's busy top-of-hour scheduling window. Edit `.github/workflows/elms-notifier.yml` if you want different hours.
 
 ## Tradeoffs you must accept
 
@@ -103,6 +103,7 @@ Disable the workflow in the repository's **Actions** tab. Delete the `ELMS_COOKI
 | `No ELMS cookies; set ELMS_COOKIES_JSON` | Secret missing | Export and set `ELMS_COOKIES` |
 | `Session expired` | Cookies dead or IP rejected | Re-login, export, update secret |
 | `Found 0 new item(s)` | Normal | No action |
+| No `schedule` run at the expected time | GitHub did not register the schedule (often after a disable/re-enable) | Push a commit that changes the cron line, then check `gh run list --event schedule` |
 | `Baseline created` on a later run | Actions cache was evicted | Check ELMS manually for items added during the gap |
 | Workflow not running | Schedule disabled after 60 days of inactivity | Make a commit or run it manually |
 
