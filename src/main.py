@@ -176,6 +176,7 @@ def run(dry_run: bool = False) -> int:
 
     except auth.SessionExpired:
         message = "Session expired, please re-login: python scripts/recon.py --login-only"
+        log.error("%s", message)
         if dry_run:
             print(message)
         else:
