@@ -6,7 +6,7 @@ It works because the bot does not need a browser in CI. `ELMS_COOKIES_JSON` give
 
 ## Schedule
 
-The workflow cron is `31 2,6,14 * * *` (UTC), which is **10:31, 13:31, and 22:31 Asia/Manila**. The 31-minute offset avoids GitHub's busy top-of-hour scheduling window. Edit `.github/workflows/elms-notifier.yml` if you want different hours.
+The workflow cron is `31 2,5,14 * * *` (UTC), which is **10:31, 13:31, and 22:31 Asia/Manila**. The 31-minute offset avoids GitHub's busy top-of-hour scheduling window. Edit `.github/workflows/elms-notifier.yml` if you want different hours.
 
 ## Tradeoffs you must accept
 

@@ -132,7 +132,7 @@ Session cookies are credentials. Never print them, commit them, or attach them t
 `.github/workflows/elms-notifier.yml` runs at:
 
 ```cron
-31 2,6,14 * * *
+31 2,5,14 * * *
 ```
 
 That is **10:31, 13:31, and 22:31 Asia/Manila**. GitHub cron is UTC. The 31-minute offset avoids the top-of-hour window where scheduled runs are most likely to be delayed or skipped. The schedule can still be delayed under load; do not describe this as real-time monitoring.
@@ -207,7 +207,7 @@ Confirm:
 
 - [ ] `.env`, `.session/`, `state.json`, `downloads/`, and `recon/` are ignored;
 - [ ] no secret appears in `README.md`, docs, tests, workflows, or assets;
-- [ ] the workflow cron is still `31 2,6,14 * * *`;
+- [ ] the workflow cron is still `31 2,5,14 * * *`;
 - [ ] the Discord test still works;
 - [ ] the social preview and banner are up to date;
 - [ ] `README.md` links resolve.
