@@ -38,11 +38,25 @@ jobs:
           key: elms-state-${{ github.run_id }}
           restore-keys: elms-state-
 
+      - name: Mint secrets token
+        id: app-token
+        continue-on-error: true
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Refresh ELMS session
         continue-on-error: true
         env:
           ELMS_SSO_COOKIES_JSON: ${{ secrets.ELMS_SSO_COOKIES }}
-        run: python scripts/refresh_session.py --headless --no-secret --timeout 45
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          if [ -n "$GH_TOKEN" ]; then
+            python scripts/refresh_session.py --headless --timeout 90 --repo "$GITHUB_REPOSITORY"
+          else
+            python scripts/refresh_session.py --headless --no-secret --timeout 90
+          fi
 
       - name: Run notifier
         env:

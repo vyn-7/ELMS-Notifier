@@ -90,6 +90,12 @@ python scripts/refresh_session.py --export-sso | gh secret set ELMS_SSO_COOKIES
 
 The manual helper opens a dedicated browser profile. If the ELMS session is still valid, it exports immediately; otherwise sign in manually. It prints the signed-in account name, asks for confirmation, then writes the cookie jar and updates `ELMS_COOKIES`. Use `--no-secret` to skip the GitHub update. The `--export-sso` command updates the SSO cookies used for the next automatic renewal.
 
+### Automatic cookie rotation
+
+To keep the persistent Microsoft cookie alive without a manual re-export, create a GitHub App with **Repository permissions → Secrets: Read and write**, install it on this repository, and add `APP_CLIENT_ID` and `APP_PRIVATE_KEY` as repository secrets. The workflow mints a one-hour token and updates both `ELMS_COOKIES` and `ELMS_SSO_COOKIES` after each successful renewal. If the App is absent, renewal still runs without secret updates and the notifier falls back to the existing `ELMS_COOKIES`.
+
+Microsoft persistent sessions are valid for up to 90 days of inactivity and slide forward when used. There is no non-expiring cookie; a revoked session or a new MFA prompt still requires a manual sign-in.
+
 The next scheduled run uses the new cookies. You do not need to change any code.
 
 ## 6. If you stop using it

@@ -111,6 +111,8 @@ Deadlines are parsed by `scraper.parse_deadline()`:
 - Local runs use `.session/storage-state.json`, created by `scripts/refresh_session.py` or `scripts/recon.py --login-only`.
 - CI runs use `ELMS_COOKIES_JSON`, created by `scripts/refresh_session.py` (or `scripts/export_cookies.py`) and stored as the `ELMS_COOKIES` repository secret.
 - Before scraping, CI runs `scripts/refresh_session.py --headless`. It reuses the Microsoft SSO cookies in `ELMS_SSO_COOKIES`, writes fresh ELMS cookies to `.session/cookies.json`, and falls back to `ELMS_COOKIES` if renewal fails.
+- When `APP_CLIENT_ID` and `APP_PRIVATE_KEY` are configured, CI mints a one-hour GitHub App token and uses it to update both `ELMS_COOKIES` and `ELMS_SSO_COOKIES`. This slides the persistent Microsoft session forward instead of letting a static jar age out. The App needs only **Secrets: Read and write** and is installed on this repository.
+- There is no non-expiring Microsoft cookie. `ESTSAUTHPERSISTENT` is valid for up to 90 days of inactivity; a successful renewal every few hours renews that window. A revoked session or a new MFA prompt still requires a manual sign-in.
 - `HttpSession.check_session()` fetches `/user_dashboard` and requires the `ctr_user_dashboard` body class. A login redirect or missing marker raises `SessionExpired`.
 - The notifier never enters Microsoft credentials or handles MFA. If SSO requires either, headless renewal stops and the notifier sends the normal re-login alert.
 - Refresh procedure: run the login helper on a graphical machine, export cookies, update the secret, then run the workflow manually to confirm.

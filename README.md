@@ -174,6 +174,17 @@ Optional: store the Microsoft SSO cookies so CI can renew the ELMS session witho
 python scripts/refresh_session.py --export-sso | gh secret set ELMS_SSO_COOKIES
 ```
 
+#### Automatic cookie rotation (recommended)
+
+The workflow can write both refreshed cookie jars back to GitHub after every successful renewal. Create a GitHub App with **Repository permissions → Secrets: Read and write**, install it on this repository, then add two repository secrets:
+
+- `APP_CLIENT_ID` — the App's Client ID
+- `APP_PRIVATE_KEY` — the App's downloaded private key
+
+The workflow mints a one-hour installation token and uses it only for `gh secret set`. If the App is not configured, the refresh still runs and the notifier falls back to the existing `ELMS_COOKIES`.
+
+There is no non-expiring Microsoft cookie. `ESTSAUTHPERSISTENT` is valid for up to 90 days of inactivity; a successful renewal every few hours slides that window forward. If Microsoft revokes the session or requires MFA again, a manual sign-in is unavoidable.
+
 ## 3. Test and create the baseline
 
 ```bash

@@ -24,9 +24,10 @@ Do not include real cookies, bot tokens, student names, assignment content, or f
 | `DISCORD_BOT_TOKEN` | Local `.env` or GitHub repository secret | Reset in the Discord Developer Portal; update `.env` and the secret |
 | `ELMS_COOKIES` / `ELMS_COOKIES_JSON` | GitHub repository secret; local `.session/cookies.json` | Sign out the ELMS session, sign in again, re-export, update the secret |
 | `ELMS_SSO_COOKIES` | GitHub repository secret only | Sign in to Microsoft again, re-export the Microsoft cookies, update the secret |
+| `APP_CLIENT_ID` / `APP_PRIVATE_KEY` | GitHub repository secrets | Revoke the App private key in GitHub, generate a new one, update `APP_PRIVATE_KEY` |
 | `.session/storage-state.json` | Local gitignored file | Re-run `scripts/refresh_session.py` |
 
-The bot token can post as the bot. The cookie jar can read the student's ELMS account. `ELMS_SSO_COOKIES` can re-enter that Microsoft account's SSO session. Treat all three as passwords.
+The bot token can post as the bot. The cookie jar can read the student's ELMS account. `ELMS_SSO_COOKIES` can re-enter that Microsoft account's SSO session. The GitHub App key can overwrite repository secrets. Treat all of them as passwords.
 
 ## Security boundaries
 

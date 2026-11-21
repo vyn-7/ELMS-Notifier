@@ -31,6 +31,7 @@ from playwright.async_api import async_playwright  # noqa: E402
 PROFILE_DIR = ROOT / ".session" / "elms-profile"
 STORAGE_STATE_PATH = ROOT / ".session" / "storage-state.json"
 COOKIE_OUT = ROOT / ".session" / "cookies.json"
+SSO_OUT = ROOT / ".session" / "sso-cookies.json"
 DEFAULT_URL = f"{selectors.BASE_URL}{selectors.DASHBOARD_PATH}?refresh=1"
 SSO_URL = (
     f"{selectors.BASE_URL}/auth/microsoft_office365"
@@ -87,23 +88,23 @@ def _load_sso_cookies(path: str | None) -> list[dict[str, object]]:
     return cookies
 
 
-def _write_cookie_jar(cookies: list[dict[str, object]]) -> None:
-    COOKIE_OUT.parent.mkdir(parents=True, exist_ok=True)
-    COOKIE_OUT.write_text(
+def _write_cookie_jar(path: Path, cookies: list[dict[str, object]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
         json.dumps({"cookies": cookies}, separators=(",", ":")),
         encoding="utf-8",
     )
-    os.chmod(COOKIE_OUT, 0o600)
+    os.chmod(path, 0o600)
 
 
-def _update_gh_secret(repo: str | None) -> None:
-    command = ["gh", "secret", "set", "ELMS_COOKIES"]
+def _update_gh_secret(name: str, path: Path, repo: str | None) -> None:
+    command = ["gh", "secret", "set", name]
     if repo:
         command += ["--repo", repo]
     try:
         subprocess.run(
             command,
-            input=COOKIE_OUT.read_text(encoding="utf-8"),
+            input=path.read_text(encoding="utf-8"),
             text=True,
             check=True,
         )
@@ -111,7 +112,7 @@ def _update_gh_secret(repo: str | None) -> None:
         raise SystemExit("gh CLI not found. Install GitHub CLI and run gh auth login.") from exc
     except subprocess.CalledProcessError as exc:
         raise SystemExit(
-            f"Failed to update ELMS_COOKIES (gh exited {exc.returncode}). Run gh auth login and retry."
+            f"Failed to update {name} (gh exited {exc.returncode}). Run gh auth login and retry."
         ) from exc
 
 
@@ -151,15 +152,24 @@ async def refresh_headless(
                 print("Microsoft SSO did not complete; manual refresh is required.")
                 return 2
 
-            elms = _elms_cookies([dict(cookie) for cookie in await context.cookies()])
+            all_cookies = [dict(cookie) for cookie in await context.cookies()]
+            elms = _elms_cookies(all_cookies)
             if not elms:
                 print("No elms.sti.edu cookies were found after SSO.")
                 return 2
-            _write_cookie_jar(elms)
+            sso = _microsoft_cookies(all_cookies)
+            _write_cookie_jar(COOKIE_OUT, elms)
             print(f"Wrote {len(elms)} ELMS cookie(s) to {COOKIE_OUT}")
+            if sso:
+                _write_cookie_jar(SSO_OUT, sso)
+                print(f"Wrote {len(sso)} Microsoft SSO cookie(s) to {SSO_OUT}")
             if update_secret:
-                _update_gh_secret(repo)
-                print("Updated GitHub secret ELMS_COOKIES.")
+                _update_gh_secret("ELMS_COOKIES", COOKIE_OUT, repo)
+                if sso:
+                    _update_gh_secret("ELMS_SSO_COOKIES", SSO_OUT, repo)
+                    print("Updated GitHub secrets ELMS_COOKIES and ELMS_SSO_COOKIES.")
+                else:
+                    print("Updated GitHub secret ELMS_COOKIES; no Microsoft cookies to rotate.")
             else:
                 print("Skipped GitHub secret update (--no-secret).")
             return 0
@@ -216,16 +226,25 @@ async def refresh(url: str, timeout: int, repo: str | None, update_secret: bool)
                 return 1
 
             await context.storage_state(path=str(STORAGE_STATE_PATH))
-            cookies = _elms_cookies(await context.cookies())
+            all_cookies = [dict(cookie) for cookie in await context.cookies()]
+            cookies = _elms_cookies(all_cookies)
             if not cookies:
                 print("No elms.sti.edu cookies were found; sign-in may not have completed.")
                 return 1
+            sso = _microsoft_cookies(all_cookies)
 
-            _write_cookie_jar(cookies)
+            _write_cookie_jar(COOKIE_OUT, cookies)
             print(f"Wrote {len(cookies)} ELMS cookie(s) to {COOKIE_OUT}")
+            if sso:
+                _write_cookie_jar(SSO_OUT, sso)
+                print(f"Wrote {len(sso)} Microsoft SSO cookie(s) to {SSO_OUT}")
             if update_secret:
-                _update_gh_secret(repo)
-                print("Updated GitHub secret ELMS_COOKIES.")
+                _update_gh_secret("ELMS_COOKIES", COOKIE_OUT, repo)
+                if sso:
+                    _update_gh_secret("ELMS_SSO_COOKIES", SSO_OUT, repo)
+                    print("Updated GitHub secrets ELMS_COOKIES and ELMS_SSO_COOKIES.")
+                else:
+                    print("Updated GitHub secret ELMS_COOKIES; no Microsoft cookies to rotate.")
             else:
                 print("Skipped GitHub secret update (--no-secret).")
             return 0
