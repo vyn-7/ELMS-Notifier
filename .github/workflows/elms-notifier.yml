@@ -16,7 +16,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
@@ -24,10 +24,12 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements-cloud.txt
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
-        run: pip install -r requirements-cloud.txt
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
 
       - name: Restore state
         uses: actions/cache/restore@v6
@@ -36,12 +38,22 @@ jobs:
           key: elms-state-${{ github.run_id }}
           restore-keys: elms-state-
 
+      - name: Refresh ELMS session
+        continue-on-error: true
+        env:
+          ELMS_SSO_COOKIES_JSON: ${{ secrets.ELMS_SSO_COOKIES }}
+        run: python scripts/refresh_session.py --headless --no-secret --timeout 45
+
       - name: Run notifier
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
           ELMS_COOKIES_JSON: ${{ secrets.ELMS_COOKIES }}
-        run: python src/main.py
+        run: |
+          if [ -s .session/cookies.json ]; then
+            export ELMS_COOKIES_JSON="$(cat .session/cookies.json)"
+          fi
+          python src/main.py
 
       - name: Save state
         if: always() && hashFiles('state.json') != ''

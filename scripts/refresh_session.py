@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Refresh the ELMS session and update the GitHub secret.
 
-Opens a dedicated visible browser profile. If the ELMS session is still valid,
-it exports immediately. If it expired, sign in manually (including Microsoft
-MFA); the script never enters credentials or automates sign-in.
+The manual mode opens a dedicated visible browser profile. If the ELMS session
+is still valid, it exports immediately. If it expired, sign in manually
+(including Microsoft MFA); the script never enters credentials or automates
+sign-in.
 
-After sign-in it prints the account name and asks for confirmation before
-writing `.session/cookies.json` and updating `ELMS_COOKIES`.
+The headless mode reuses the existing Microsoft SSO cookies from
+`.session/storage-state.json` (or `ELMS_SSO_COOKIES_JSON`) to obtain a fresh
+ELMS session. It also never enters credentials or handles MFA. If Microsoft
+asks for either, it stops and the manual mode is required.
 """
 
 from __future__ import annotations
@@ -29,6 +32,10 @@ PROFILE_DIR = ROOT / ".session" / "elms-profile"
 STORAGE_STATE_PATH = ROOT / ".session" / "storage-state.json"
 COOKIE_OUT = ROOT / ".session" / "cookies.json"
 DEFAULT_URL = f"{selectors.BASE_URL}{selectors.DASHBOARD_PATH}?refresh=1"
+SSO_URL = (
+    f"{selectors.BASE_URL}/auth/microsoft_office365"
+    "?state=%7B%22visitor_portal_id%22%3A1200%7D"
+)
 
 
 def _require_display() -> None:
@@ -42,8 +49,42 @@ def _elms_cookies(cookies: list[dict[str, object]]) -> list[dict[str, object]]:
     return [
         cookie
         for cookie in cookies
-        if (cookie.get("domain") or "").lstrip(".") == "elms.sti.edu"
+        if str(cookie.get("domain") or "").lstrip(".") == "elms.sti.edu"
     ]
+
+
+def _microsoft_cookies(cookies: list[dict[str, object]]) -> list[dict[str, object]]:
+    domains = ("microsoftonline.com", "microsoft.com", "live.com")
+    return [
+        cookie
+        for cookie in cookies
+        if str(cookie.get("domain") or "").lstrip(".").lower().endswith(domains)
+    ]
+
+
+def _load_sso_cookies(path: str | None) -> list[dict[str, object]]:
+    if path:
+        raw = Path(path).read_text(encoding="utf-8")
+    elif os.getenv("ELMS_SSO_COOKIES_JSON", "").strip():
+        raw = os.environ["ELMS_SSO_COOKIES_JSON"]
+    elif STORAGE_STATE_PATH.exists():
+        raw = STORAGE_STATE_PATH.read_text(encoding="utf-8")
+    else:
+        raise SystemExit(
+            "No Microsoft SSO cookies. Set ELMS_SSO_COOKIES_JSON or create "
+            ".session/storage-state.json with scripts/refresh_session.py."
+        )
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise SystemExit("SSO cookie data is not valid JSON") from exc
+    entries = data.get("cookies", []) if isinstance(data, dict) else data
+    cookies = _microsoft_cookies(
+        [cookie for cookie in entries if isinstance(cookie, dict)]
+    )
+    if not cookies:
+        raise SystemExit("No Microsoft SSO cookies found; sign in manually once.")
+    return cookies
 
 
 def _write_cookie_jar(cookies: list[dict[str, object]]) -> None:
@@ -72,6 +113,58 @@ def _update_gh_secret(repo: str | None) -> None:
         raise SystemExit(
             f"Failed to update ELMS_COOKIES (gh exited {exc.returncode}). Run gh auth login and retry."
         ) from exc
+
+
+async def refresh_headless(
+    timeout: int,
+    repo: str | None,
+    update_secret: bool,
+    sso_path: str | None,
+) -> int:
+    """Renew the ELMS session from an existing Microsoft SSO cookie."""
+    cookies = _load_sso_cookies(sso_path)
+    async with async_playwright() as playwright:
+        browser = await playwright.chromium.launch(
+            headless=True,
+            args=["--disable-dev-shm-usage", "--disable-gpu"],
+        )
+        context = await browser.new_context()
+        await context.add_cookies(cookies)  # type: ignore[arg-type]
+        page = await context.new_page()
+        try:
+            await page.goto(SSO_URL, wait_until="domcontentloaded", timeout=60_000)
+            loop = asyncio.get_running_loop()
+            deadline = loop.time() + timeout
+            while loop.time() < deadline:
+                try:
+                    body_class = await page.eval_on_selector("body", "el => el.className") or ""
+                except Exception:
+                    body_class = ""
+                expired = any(
+                    fragment in page.url
+                    for fragment in selectors.SESSION_EXPIRED_URL_FRAGMENTS
+                )
+                if selectors.LOGGED_IN_BODY_CLASS in body_class and not expired:
+                    break
+                await page.wait_for_timeout(1_000)
+            else:
+                print("Microsoft SSO did not complete; manual refresh is required.")
+                return 2
+
+            elms = _elms_cookies([dict(cookie) for cookie in await context.cookies()])
+            if not elms:
+                print("No elms.sti.edu cookies were found after SSO.")
+                return 2
+            _write_cookie_jar(elms)
+            print(f"Wrote {len(elms)} ELMS cookie(s) to {COOKIE_OUT}")
+            if update_secret:
+                _update_gh_secret(repo)
+                print("Updated GitHub secret ELMS_COOKIES.")
+            else:
+                print("Skipped GitHub secret update (--no-secret).")
+            return 0
+        finally:
+            await browser.close()
 
 
 async def refresh(url: str, timeout: int, repo: str | None, update_secret: bool) -> int:
@@ -156,8 +249,26 @@ def main() -> int:
         action="store_true",
         help="write the cookie file but do not update the GitHub secret",
     )
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="renew from saved Microsoft SSO cookies; no visible browser",
+    )
+    parser.add_argument(
+        "--sso-cookies",
+        help="JSON file with Microsoft cookies (default: ELMS_SSO_COOKIES_JSON or storage-state.json)",
+    )
     args = parser.parse_args()
     try:
+        if args.headless:
+            return asyncio.run(
+                refresh_headless(
+                    args.timeout,
+                    args.repo,
+                    update_secret=not args.no_secret,
+                    sso_path=args.sso_cookies,
+                )
+            )
         return asyncio.run(
             refresh(args.url, args.timeout, args.repo, update_secret=not args.no_secret)
         )
