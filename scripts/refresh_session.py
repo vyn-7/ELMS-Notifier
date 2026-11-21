@@ -258,8 +258,21 @@ def main() -> int:
         "--sso-cookies",
         help="JSON file with Microsoft cookies (default: ELMS_SSO_COOKIES_JSON or storage-state.json)",
     )
+    parser.add_argument(
+        "--export-sso",
+        action="store_true",
+        help="print the saved Microsoft SSO cookies for gh secret set",
+    )
     args = parser.parse_args()
     try:
+        if args.export_sso:
+            print(
+                json.dumps(
+                    {"cookies": _load_sso_cookies(args.sso_cookies), "origins": []},
+                    separators=(",", ":"),
+                )
+            )
+            return 0
         if args.headless:
             return asyncio.run(
                 refresh_headless(

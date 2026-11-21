@@ -23,14 +23,15 @@ Do not include real cookies, bot tokens, student names, assignment content, or f
 |---|---|---|
 | `DISCORD_BOT_TOKEN` | Local `.env` or GitHub repository secret | Reset in the Discord Developer Portal; update `.env` and the secret |
 | `ELMS_COOKIES` / `ELMS_COOKIES_JSON` | GitHub repository secret; local `.session/cookies.json` | Sign out the ELMS session, sign in again, re-export, update the secret |
+| `ELMS_SSO_COOKIES` | GitHub repository secret only | Sign in to Microsoft again, re-export the Microsoft cookies, update the secret |
 | `.session/storage-state.json` | Local gitignored file | Re-run `scripts/refresh_session.py` |
 
-The bot token can post as the bot. The cookie jar can read the student's ELMS account. Treat both as passwords.
+The bot token can post as the bot. The cookie jar can read the student's ELMS account. `ELMS_SSO_COOKIES` can re-enter that Microsoft account's SSO session. Treat all three as passwords.
 
 ## Security boundaries
 
 - The notifier is **read-only** on ELMS. It must never submit, edit, delete, enroll, or click anything that changes data.
-- It must never automate Microsoft sign-in, MFA, captcha, rate limits, or any access control.
+- It must never enter Microsoft credentials, handle MFA, solve captchas, or bypass access controls. Optional headless renewal reuses an existing Microsoft SSO cookie; it stops if Microsoft asks for a password or MFA.
 - `.env`, `.session/`, `state.json`, `downloads/`, and `recon/` are gitignored. Do not remove those rules.
 - The repository may be public. Do not commit raw HTML, screenshots, assignment content, or fixtures with real names, IDs, emails, or course codes.
 - Workflows use `permissions: contents: read`. Do not add `pull_request_target`.

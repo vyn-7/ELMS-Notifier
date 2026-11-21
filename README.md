@@ -89,7 +89,7 @@ flowchart LR
 5. **Convert PDFs to PNGs** with PyMuPDF. Pages are batched to stay within Discord's 10-attachment and 8 MiB message budget.
 6. **Send through the Discord bot API.** An item is marked seen only after its message is delivered successfully; failed items are retried on later runs.
 
-The browser is used only on your machine for the **one-time Microsoft sign-in** that creates the reusable session. The notifier never automates Microsoft sign-in or MFA.
+The browser is used for the **one-time Microsoft sign-in** on your machine. CI can optionally reuse that saved Microsoft SSO session to renew ELMS cookies headlessly. The notifier never enters Microsoft credentials or handles MFA.
 
 ## Requirements
 
@@ -158,7 +158,7 @@ python scripts/recon.py --login-only
 
 A visible Chromium window opens. Sign in with your STI Microsoft account (including MFA), wait until the ELMS dashboard appears, then press Enter in the terminal. The helper saves the reusable session to `.session/storage-state.json` (gitignored).
 
-The notifier never asks for or stores your password, and never automates the Microsoft sign-in. When the session expires, use `python scripts/refresh_session.py` (see [Refresh an expired session](#4-refresh-an-expired-session)).
+The notifier never asks for or stores your password, and never enters Microsoft credentials or handles MFA. When the session expires, use `python scripts/refresh_session.py` (see [Refresh an expired session](#4-refresh-an-expired-session)). CI can renew automatically while the saved Microsoft SSO session is still valid.
 
 For GitHub Actions, export only the ELMS cookies:
 
@@ -167,6 +167,12 @@ python scripts/export_cookies.py
 ```
 
 This writes `.session/cookies.json` with the minimal cookie jar. The file is a credential and must stay private.
+
+Optional: store the Microsoft SSO cookies so CI can renew the ELMS session without a manual login:
+
+```bash
+python scripts/refresh_session.py --export-sso | gh secret set ELMS_SSO_COOKIES
+```
 
 ## 3. Test and create the baseline
 
@@ -229,16 +235,19 @@ After that, new items produce one bot message each. State is saved in the Action
 
 ### 4. Refresh an expired session
 
-When the bot posts a session-expired alert:
+CI tries `ELMS_SSO_COOKIES` first. If Microsoft still has a valid SSO session, renewal is automatic.
+
+When the bot posts a session-expired alert, refresh manually:
 
 ```bash
 source .venv/bin/activate
 python scripts/refresh_session.py
+python scripts/refresh_session.py --export-sso | gh secret set ELMS_SSO_COOKIES
 ```
 
-This opens a dedicated browser profile. If the session is still valid, it exports immediately. If it expired, sign in manually (including Microsoft MFA). The script prints the signed-in account name, asks you to confirm it is the right account, then writes `.session/cookies.json` and updates the `ELMS_COOKIES` GitHub secret.
+This opens a dedicated browser profile. If the session is still valid, it exports immediately. If it expired, sign in manually (including Microsoft MFA). The script prints the signed-in account name, asks you to confirm it is the right account, then writes `.session/cookies.json` and updates the `ELMS_COOKIES` GitHub secret. The `--export-sso` command refreshes the cookies used for automatic renewal.
 
-Use `--no-secret` to skip the GitHub update or `--repo owner/name` to target a different repository. The helper never enters credentials or automates Microsoft sign-in.
+Use `--no-secret` to skip the GitHub update or `--repo owner/name` to target a different repository. The helper never enters credentials or handles MFA.
 
 The next scheduled run uses the new cookies. No code changes are needed.
 
@@ -263,6 +272,7 @@ The cron expression is `31 2,5,14 * * *` in [`.github/workflows/elms-notifier.ym
 | `DISCORD_BOT_TOKEN` | Yes | — | Bot token from the Discord Developer Portal. Never commit it. |
 | `DISCORD_CHANNEL_ID` | Yes | — | Target Discord channel ID. |
 | `ELMS_COOKIES_JSON` | CI/headless | — | Minimal ELMS cookie jar for browserless runs. |
+| `ELMS_SSO_COOKIES_JSON` | Optional CI | — | Microsoft SSO cookies used for headless session renewal. |
 | `ELMS_STATE_PATH` | No | `state.json` | Where the seen/failure state is stored. |
 | `ELMS_DOWNLOAD_DIR` | No | `downloads/` | Temporary attachment download directory. |
 
@@ -271,9 +281,9 @@ The timezone is fixed to `Asia/Manila` so deadlines and the schedule behave cons
 ## Security and privacy
 
 - **Read-only on ELMS.** The notifier opens pages and downloads attachments. It never submits forms, edits, deletes, enrolls, or performs any write action.
-- **No Microsoft automation.** Sign-in, MFA, captcha, and access controls are handled manually by you in a visible browser. The notifier only reuses the resulting session.
+- **No credential automation.** The notifier never enters Microsoft credentials, handles MFA, solves captchas, or bypasses access controls. Optional headless renewal reuses an existing Microsoft SSO cookie and stops if Microsoft asks for a password or MFA.
 - **Secrets stay out of the repository.** `.env`, `.session/`, `state.json`, and `downloads/` are gitignored. The bot token is read only from the environment or `.env`.
-- **CI secrets are encrypted repository secrets.** `ELMS_COOKIES` contains the minimal cookie jar; `DISCORD_BOT_TOKEN` is the bot credential.
+- **CI secrets are encrypted repository secrets.** `ELMS_COOKIES` contains the minimal cookie jar; `ELMS_SSO_COOKIES` contains the Microsoft SSO cookies used for renewal; `DISCORD_BOT_TOKEN` is the bot credential.
 - **Logs are deliberately quiet.** The notifier logs item IDs and error types, not page HTML, instructions, cookies, tokens, or full attachment URLs.
 - **Test fixtures are sanitized.** Raw ELMS HTML is never committed; fixtures use fake names, IDs, and course codes.
 - **Minimum Discord permissions.** Grant only View Channels, Send Messages, Embed Links, Attach Files, and Mention Everyone.
@@ -291,7 +301,8 @@ This project is not affiliated with STI Education Services Group or Discord Inc.
 | `Discord returned HTTP 403` | Missing channel permissions | Grant Send Messages, Embed Links, Attach Files |
 | `Discord returned HTTP 404` | Wrong channel ID or bot not in server | Copy the channel ID again; re-invite the bot |
 | Message posts but `@everyone` does not ping | Missing Mention Everyone | Grant that permission in the channel |
-| `Session expired` alert | Cookies expired or rejected | Run `python scripts/refresh_session.py` and update `ELMS_COOKIES` |
+| `Session expired` alert | Cookies expired or rejected | Run `python scripts/refresh_session.py`, then `python scripts/refresh_session.py --export-sso \| gh secret set ELMS_SSO_COOKIES` |
+| `Microsoft SSO did not complete` | SSO cookies expired or Microsoft wants MFA | Sign in manually, then re-export `ELMS_SSO_COOKIES` |
 | Empty to-do list alert | Session or page layout changed | Run `--dry-run`; check the session and selectors |
 | No new notifications | Items are already in the baseline | Check `state.json`; this is expected for old items |
 | PDF too large | Page exceeds Discord's file limit | The bot lowers DPI 130 → 100 → 80 and batches pages |

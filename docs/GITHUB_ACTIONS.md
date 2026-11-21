@@ -2,7 +2,7 @@
 
 This is the no-card, no-trial option. GitHub Actions runs the notifier **three times a day** in GitHub's cloud. It is not a continuously running server; the Discord bot is offline between runs, which is fine because it only sends messages and has no commands.
 
-It works because the bot does not need a browser in CI. `ELMS_COOKIES_JSON` gives it the three `elms.sti.edu` cookies over plain HTTPS, and PyMuPDF still converts PDFs to PNGs on the runner. The browser is only used on your laptop to create the session.
+It works because the bot does not need a browser to scrape. `ELMS_COOKIES_JSON` gives it the three `elms.sti.edu` cookies over plain HTTPS, and PyMuPDF still converts PDFs to PNGs on the runner. A headless browser is used only for the optional session renewal step.
 
 ## Schedule
 
@@ -14,8 +14,8 @@ The workflow cron is `31 2,5,14 * * *` (UTC), which is **10:31, 13:31, and 22:31
 - In a public repository, GitHub disables scheduled workflows after **60 days without repository activity**. Make a trivial commit or run the workflow manually once a month.
 - A private repository also works; three runs a day is far below the free Actions quota. The repository must be public only if you want unlimited minutes for more frequent runs.
 - GitHub's terms expect Actions to be used for the repository's software project. This bot is the repository, so it is a reasonable use, but it is not a general-purpose hosting service.
-- The ELMS session can still expire. You refresh it on your laptop and update one secret.
-- **Unverified until the first run:** GitHub runners use different IP addresses. Microsoft may invalidate the session from a new IP. The first workflow run is the real test. If it reports `Session expired`, refresh the cookies and retry; if Microsoft consistently rejects runner IPs, host the notifier on a small always-on machine instead.
+- The ELMS session can still expire. The workflow tries a headless renewal from `ELMS_SSO_COOKIES` before every run. If that fails, it falls back to `ELMS_COOKIES` and posts the usual re-login alert.
+- **Microsoft may reject a runner IP or expire the SSO session.** The first workflow run is the real test. If it reports `Microsoft SSO did not complete`, re-export the SSO cookies from a fresh browser sign-in; if Microsoft consistently rejects runner IPs, host the notifier on a small always-on machine instead.
 
 ## 1. Create the repository
 
@@ -45,9 +45,12 @@ gh secret set DISCORD_CHANNEL_ID
 # Export only the three elms.sti.edu cookies. This writes .session/cookies.json.
 python scripts/export_cookies.py
 gh secret set ELMS_COOKIES < .session/cookies.json
+
+# Optional: let the workflow renew the ELMS session from your saved Microsoft SSO.
+python scripts/refresh_session.py --export-sso | gh secret set ELMS_SSO_COOKIES
 ```
 
-Keep `.session/cookies.json` private; it is a credential. Do not print it.
+Keep `.session/cookies.json` private; it is a credential. `ELMS_SSO_COOKIES` is also a credential and can re-enter your Microsoft account; never print it or commit it.
 
 ## 3. First run
 
@@ -74,21 +77,24 @@ The workflow uses `concurrency` to prevent overlapping runs. State is saved even
 
 ## 5. Refresh an expired session
 
-When the bot posts a session-expired alert:
+The workflow tries `ELMS_SSO_COOKIES` first. If Microsoft still has a valid SSO session, renewal is automatic and no manual step is needed.
+
+When the bot posts a session-expired alert, refresh manually:
 
 ```bash
 cd ~/Documents/Projects/STI/assignment-notifier
 source .venv/bin/activate
 python scripts/refresh_session.py
+python scripts/refresh_session.py --export-sso | gh secret set ELMS_SSO_COOKIES
 ```
 
-The helper opens a dedicated browser profile. If the session is still valid, it exports immediately; otherwise sign in manually. It prints the signed-in account name, asks for confirmation, then writes the cookie jar and updates `ELMS_COOKIES`. Use `--no-secret` to skip the GitHub update.
+The manual helper opens a dedicated browser profile. If the ELMS session is still valid, it exports immediately; otherwise sign in manually. It prints the signed-in account name, asks for confirmation, then writes the cookie jar and updates `ELMS_COOKIES`. Use `--no-secret` to skip the GitHub update. The `--export-sso` command updates the SSO cookies used for the next automatic renewal.
 
 The next scheduled run uses the new cookies. You do not need to change any code.
 
 ## 6. If you stop using it
 
-Disable the workflow in the repository's **Actions** tab. Delete the `ELMS_COOKIES`, `DISCORD_BOT_TOKEN`, and `DISCORD_CHANNEL_ID` secrets. Remove the bot from the server if you no longer want it.
+Disable the workflow in the repository's **Actions** tab. Delete the `ELMS_COOKIES`, `ELMS_SSO_COOKIES`, `DISCORD_BOT_TOKEN`, and `DISCORD_CHANNEL_ID` secrets. Remove the bot from the server if you no longer want it.
 
 ## Troubleshooting
 
@@ -101,7 +107,8 @@ Disable the workflow in the repository's **Actions** tab. Delete the `ELMS_COOKI
 | `Discord returned HTTP 404` | Wrong channel ID or bot not in the server | Copy the channel ID again; re-invite the bot |
 | Message posts but `@everyone` doesn't ping | Bot lacks Mention Everyone | Grant that permission in the channel |
 | `No ELMS cookies; set ELMS_COOKIES_JSON` | Secret missing | Export and set `ELMS_COOKIES` |
-| `Session expired` | Cookies dead or IP rejected | Re-login, export, update secret |
+| `Session expired` | Cookies dead or IP rejected | Run `python scripts/refresh_session.py`, then `python scripts/refresh_session.py --export-sso \| gh secret set ELMS_SSO_COOKIES` |
+| `Microsoft SSO did not complete` | SSO cookies expired or Microsoft wants MFA | Sign in to ELMS manually, then re-export `ELMS_SSO_COOKIES` |
 | `Found 0 new item(s)` | Normal | No action |
 | No `schedule` run at the expected time | GitHub did not register the schedule (often after a disable/re-enable) | Push a commit that changes the cron line, then check `gh run list --event schedule` |
 | `Baseline created` on a later run | Actions cache was evicted | Check ELMS manually for items added during the gap |
